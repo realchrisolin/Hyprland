@@ -119,17 +119,16 @@ eScreenshareError CScreenshareFrame::share(SP<IHLBuffer> buffer, const CRegion& 
     m_callback = callback;
     m_shared   = true;
 
-    if (m_session->m_type == SHARE_MONITOR || m_session->m_type == SHARE_REGION) {
-        const auto PMONITOR = m_session->monitor();
-        if (PMONITOR)
-            PMONITOR->addDamage(PMONITOR->resources()->pendingMirrorFBDamage());
-    }
+    const auto PMONITOR = m_session->monitor();
 
-    // schedule a frame so that when a screenshare starts it isn't black until the output is updated
-    if (m_isFirst) {
-        const auto PMONITOR = m_session->monitor();
-        if (PMONITOR)
-            PMONITOR->scheduleFrame(Aquamarine::IOutput::AQ_SCHEDULE_NEEDS_FRAME);
+    if ((m_session->m_type == SHARE_MONITOR || m_session->m_type == SHARE_REGION) && PMONITOR)
+        PMONITOR->addDamage(PMONITOR->resources()->pendingMirrorFBDamage());
+
+    // Always schedule a frame redraw. wlr-screencopy damages every share; ICC
+    // only did this when m_isFirst, which stalls idle/headless outputs until
+    // something else redraws (e.g. pointer motion).
+    if (PMONITOR) {
+        PMONITOR->scheduleFrame(Aquamarine::IOutput::AQ_SCHEDULE_NEEDS_FRAME);
         g_pHyprRenderer->damageMonitor(PMONITOR);
     }
 
